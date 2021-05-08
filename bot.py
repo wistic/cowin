@@ -2,9 +2,9 @@ import os
 
 from logger import logger
 from telegram.ext.messagehandler import MessageHandler
-from database import checkUser, deleteUser, getDistrictCode, getDistrictName, getStateCode, getStateName, addUser
+from database import addPhone, changeCallMode, checkUser, deleteUser, getDistrictCode, getDistrictName, getStateCode, getStateName, addUser, getUser
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Updater, CallbackContext, CommandHandler, CallbackQueryHandler, Filters
 
 
@@ -33,6 +33,15 @@ def getKeyboard(mode: str):
         ]
         text = "Select the mode for search:"
         return text, InlineKeyboardMarkup(keyboard)
+    elif mode == "share_contact":
+        keyboard = [
+            [KeyboardButton(
+                "Share my number", request_contact=True)],
+            [KeyboardButton("Cancel")]
+        ]
+        text = "If you turn call mode on, you will receieve a call when vaccination slots are available." + \
+            " For that you need to share your phone number with me. Click below to send phone number:"
+        return text, ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
 
 def getDynamicKeyboard(mode: str, array: list):
@@ -122,6 +131,14 @@ def button(update: Update, context: CallbackContext):
                 context.user_data["data_mode"] = "age"
                 context.user_data["district"] = district
                 query.edit_message_text(text, parse_mode="markdown")
+        elif query.data.startswith("call"):
+            call_mode = query.data.split("_", 1)[-1]
+            if call_mode == "cancel":
+                query.edit_message_text("OK")
+            else:
+                bool_mode = True if call_mode == "on" else False
+                changeCallMode(id, bool_mode)
+                query.edit_message_text("Call mode turned "+call_mode)
 
 
 def back(update: Update, context: CallbackContext):
@@ -141,7 +158,11 @@ def back(update: Update, context: CallbackContext):
 def message(update: Update, context: CallbackContext):
     id = str(update.effective_chat.id)
     if "data_mode" not in context.user_data:
-        update.message.reply_text("Didn't get ya. Please /start over again.")
+        if update.message.text == "Cancel":
+            update.message.reply_text("OK")
+        else:
+            update.message.reply_text(
+                "Didn't get ya. Please /start over again.")
     else:
         if context.user_data["data_mode"] == "pincode":
             try:
@@ -235,6 +256,70 @@ def message(update: Update, context: CallbackContext):
                 context.user_data.pop("district", None)
 
 
+def contact(update: Update, context: CallbackContext):
+    contact = update.effective_message.contact
+    phone = contact.phone_number
+    id = str(update.effective_chat.id)
+    if str(contact.user_id) != id:
+        update.message.reply_text(
+            "This doesn't seem like your contact. Please send your own phone number.")
+    else:
+        if not checkUser(id):
+            update.message.reply_text(
+                "You need to register first. Send /start to register.")
+        else:
+            if len(phone) == 10:
+                phone = '+91'+phone
+            elif len(phone) == 12:
+                phone = '+'+phone
+            addPhone(id, phone)
+            update.message.reply_text("Phone number added successfully.")
+
+
+def call(update: Update, context: CallbackContext):
+    context.user_data.pop("back_status", None)
+    context.user_data.pop("state", None)
+    context.user_data.pop("data_mode", None)
+    context.user_data.pop("pincode", None)
+    context.user_data.pop("district", None)
+
+    id = str(update.effective_chat.id)
+    if not checkUser(id):
+        update.message.reply_text(
+            "You need to register first. Send /start to register.")
+    else:
+        user = getUser(id)
+        if "phone" not in user:
+            text, keyboard = getKeyboard("share_contact")
+            update.message.reply_text(text, reply_markup=keyboard)
+        else:
+            if len(context.args) == 1 and (context.args[0] == "on" or context.args[0] == "off"):
+                call_mode = True if context.args[0] == "on" else False
+                changeCallMode(id, call_mode)
+                update.message.reply_text("Call mode turned "+context.args[0])
+            else:
+                text = "Use */call on* and */call off* to quickly turn on/off the call mode.\n\nSelect:"
+                call_mode = "off" if user["call_mode"] else "on"
+                keyboard = [
+                    [InlineKeyboardButton(
+                        "Turn "+call_mode, callback_data="call_"+call_mode),
+                     InlineKeyboardButton(
+                        "Cancel", callback_data="call_cancel")]
+                ]
+                update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(
+                    keyboard), parse_mode="markdown")
+
+
+def help(update: Update, context: CallbackContext):
+    context.user_data.pop("back_status", None)
+    context.user_data.pop("state", None)
+    context.user_data.pop("data_mode", None)
+    context.user_data.pop("pincode", None)
+    context.user_data.pop("district", None)
+    text = "*/start*   Register for vaccination.\n*/back*    Go back.\n*/help*    Show this help menu.\n*/call*     Change call mode."
+    update.message.reply_text(text, parse_mode="markdown")
+
+
 if __name__ == "__main__":
     updater = Updater(os.environ["COWISTICBOT"], use_context=True)
     dispatcher = updater.dispatcher
@@ -244,9 +329,9 @@ if __name__ == "__main__":
     dispatcher.add_handler(CommandHandler('back', back))
     dispatcher.add_handler(MessageHandler(
         Filters.text & ~Filters.command, message))
+    dispatcher.add_handler(CommandHandler('call', call))
+    dispatcher.add_handler(CommandHandler('help', help))
+    dispatcher.add_handler(MessageHandler(Filters.contact, contact))
 
     updater.start_polling()
     updater.idle()
-
-
-# TODO add ask phone

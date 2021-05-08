@@ -114,7 +114,18 @@ def getSearch():
         return copy.deepcopy(search_data)
 
 
-# TODO add call mode
+def addPhone(id: str, phone: str):
+    if checkUser(id):
+        with lock:
+            users[id]["phone"] = phone
+            users[id]["call_mode"] = True
+
+
+def changeCallMode(id: str, mode: bool):
+    if checkUser(id):
+        with lock:
+            users[id]["call_mode"] = mode
+
 
 """
 users = {
