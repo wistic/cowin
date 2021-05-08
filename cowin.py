@@ -47,7 +47,7 @@ def findbyDistrict(district_id: int):
     url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict"
     payload = {
         "district_id": district_id,
-        "date": datetime.datetime.today().strftime(" % d-%m-%Y")
+        "date": datetime.datetime.today().strftime("%d-%m-%Y")
     }
     return makeRequest(url, payload)
 
@@ -56,6 +56,6 @@ def calendarbyDistrict(district_id: int):
     url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict"
     payload = {
         "district_id": district_id,
-        "date": datetime.datetime.today().strftime(" % d-%m-%Y")
+        "date": datetime.datetime.today().strftime("%d-%m-%Y")
     }
     return makeRequest(url, payload)

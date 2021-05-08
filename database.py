@@ -42,8 +42,45 @@ def checkUser(id: str):
     return False
 
 
+def getUser(id: str):
+    return users[id]
+
+
 def addUser(id: str, mode: str, params: dict):
     users[id] = {
         "mode": mode,
         "params": params
     }
+
+
+"""
+users = {
+    "id": {
+        "mode": pincode/district,
+        "call_mode": True,
+        "name": name,
+        "phone": phone,
+        "age": age
+        params: variable type
+    }
+}
+
+
+states = {
+    "state_name": {
+        "state_id": id,
+        "districts": {
+            "district_name": "district_id"
+        }
+    }
+}
+
+search = {
+    "pin": [userids searhcing with pin]
+    "district": [userids searching with district]
+}
+
+"""
+
+
+# TODO add mutex and update addUser method

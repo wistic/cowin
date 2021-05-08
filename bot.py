@@ -204,3 +204,7 @@ if __name__ == "__main__":
 
     updater.start_polling()
     updater.idle()
+
+
+
+# TODO add ask phone and ask age
