@@ -1,10 +1,31 @@
-from requests.sessions import DEFAULT_REDIRECT_LIMIT
-from telegram import user
+import json
+from logger import logger
 from cowin import getStates, getDistricts
+from threading import Lock
 import re
+import copy
 
-states = getStates()
+
+##### To get the state information dump #####
+# states = getStates()
+# states = getDistricts(states)
+# with open('data', 'w') as f:
+#     json.dump(states, f, indent=4)
+#############################################
+
+####### To load the state information #######
+with open('data', 'r') as f:
+    states = json.load(f)
+#############################################
+
+
 users = {}
+search_data = {
+    "pincode": {},
+    "district": {}
+}
+
+lock = Lock()
 
 
 def getStateName(pattern: str):
@@ -21,8 +42,6 @@ def getStateName(pattern: str):
 
 
 def getDistrictName(pattern: str, state: str):
-    if "districts" not in states[state]:
-        states[state]["districts"] = getDistricts(states[state]["state_id"])
     districts = states[state]["districts"]
     match = []
     for key in districts.keys():
@@ -36,21 +55,63 @@ def getDistrictName(pattern: str, state: str):
         return match
 
 
+def getStateCode(name: str):
+    return states[name]["state_id"]
+
+
+def getDistrictCode(state_name: str, district_name: str):
+    return states[state_name]["districts"][district_name]
+
+
 def checkUser(id: str):
-    if id in users:
-        return True
-    return False
+    with lock:
+        if id in users:
+            return True
+        return False
 
 
 def getUser(id: str):
-    return users[id]
+    if checkUser(id):
+        with lock:
+            return copy.deepcopy(users[id])
+    else:
+        logger.critical("User not found.")
 
 
-def addUser(id: str, mode: str, params: dict):
-    users[id] = {
-        "mode": mode,
-        "params": params
-    }
+def addUser(id: str, data: dict):
+    if checkUser(id):
+        deleteUser(id)
+    with lock:
+        users[id] = data
+        if data["mode"] == "pincode":
+            if data["pincode"] not in search_data["pincode"]:
+                search_data["pincode"][data["pincode"]] = [id]
+            else:
+                search_data["pincode"][data["pincode"]].append(id)
+        elif data["mode"] == "district":
+            if data["district_id"] not in search_data["district"]:
+                search_data["district"][data["district_id"]] = [id]
+            else:
+                search_data["district"][data["district_id"]].append(id)
+
+
+def deleteUser(id: str):
+    if checkUser(id):
+        with lock:
+            try:
+                if users[id]["mode"] == "pincode":
+                    search_data["pincode"][users[id]["pincode"]].remove(id)
+                elif users[id]["mode"] == "district":
+                    search_data["district"][users[id]
+                                            ["district_id"]].remove(id)
+            except:
+                logger.critical("Entry not found in search_data")
+            users.pop(id, None)
+
+
+def getSearch():
+    with lock:
+        return copy.deepcopy(search_data)
 
 
 """
@@ -76,11 +137,8 @@ states = {
 }
 
 search = {
-    "pin": [userids searhcing with pin]
+    "pin": [userids searching with pin]
     "district": [userids searching with district]
 }
 
 """
-
-
-# TODO add mutex and update addUser method

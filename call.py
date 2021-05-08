@@ -1,17 +1,21 @@
 import os
 from twilio.rest import Client
-from twilio.twiml.voice_response import Pause, VoiceResponse
+from twilio.twiml.voice_response import VoiceResponse
 from database import getUser
+from logger import logger
+
+account_sid = os.environ['TWILIO_ACCOUNT_SID']
+auth_token = os.environ['TWILIO_AUTH_TOKEN']
+twilio_phone = os.environ['TWILIO_PHONE']
 
 
 def callUser(id: str, slots: int, centers: int):
-    account_sid = os.environ['TWILIO_ACCOUNT_SID']
-    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+
     client = Client(account_sid, auth_token)
 
     user = getUser(id)
     if not user["call_mode"] or "phone" not in user:
-        print("programming error")
+        logger.critical("programming error")
         return
 
     response = VoiceResponse()
@@ -33,5 +37,8 @@ def callUser(id: str, slots: int, centers: int):
     client.calls.create(
         twiml=str(response),
         to=user["phone"],
-        from_='+12136994691'
+        from_=twilio_phone
     )
+
+
+# TODO only initialize client once

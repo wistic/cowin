@@ -1,6 +1,5 @@
 import os
 
-from requests.api import get
 from telegram.ext.messagehandler import MessageHandler
 from database import checkUser, getDistrictName, getStateName, addUser
 
@@ -37,8 +36,7 @@ def getKeyboard(mode: str):
 def getDynamicKeyboard(mode: str, array: list):
     text = "Is your "+mode+" any of these?"
     keyboard = [
-        [InlineKeyboardButton(entry, callback_data=(mode+"_"+entry))
-         for entry in array]
+        [InlineKeyboardButton(entry, callback_data=(mode+"_"+entry))] for entry in array
     ]
     keyboard.append([InlineKeyboardButton(
         "None of these", callback_data=(mode+"_None"))])
@@ -206,5 +204,4 @@ if __name__ == "__main__":
     updater.idle()
 
 
-
-# TODO add ask phone and ask age
+# TODO add ask phone and ask age and delete entry

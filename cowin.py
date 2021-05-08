@@ -1,15 +1,20 @@
 import requests
 import json
 from urllib.parse import urljoin
+from logger import logger
 import datetime
 
 
 def makeRequest(url: str, payload={}):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
-    response = requests.get(url, params=payload, headers=headers)
-    if response.status_code == requests.codes.ok:
-        return json.loads(response.text)
+    try:
+        response = requests.get(url, params=payload, headers=headers)
+    except:
+        logger.critical("Unable to connect to Cowin API.")
+    else:
+        if response.status_code == requests.codes.ok:
+            return json.loads(response.text)
 
 
 def getStates():
@@ -18,11 +23,14 @@ def getStates():
     return {entry["state_name"]: {"state_id": entry["state_id"]} for entry in states}
 
 
-def getDistricts(state_id: int):
+def getDistricts(states: dict):
     base_url = "https://cdn-api.co-vin.in/api/v2/admin/location/districts/"
-    url = urljoin(base_url, str(state_id))
-    districts = makeRequest(url)["districts"]
-    return {entry["district_name"]: entry["district_id"] for entry in districts}
+    for state in states.keys():
+        url = urljoin(base_url, str(states[state]["state_id"]))
+        districts = makeRequest(url)["districts"]
+        states[state]["districts"] = {
+            entry["district_name"]: entry["district_id"] for entry in districts}
+    return states
 
 
 def findbyPin(pin: int):
