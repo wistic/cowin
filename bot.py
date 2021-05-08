@@ -1,7 +1,8 @@
 import os
 
+from logger import logger
 from telegram.ext.messagehandler import MessageHandler
-from database import checkUser, getDistrictName, getStateName, addUser
+from database import checkUser, deleteUser, getDistrictCode, getDistrictName, getStateCode, getStateName, addUser
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CallbackContext, CommandHandler, CallbackQueryHandler, Filters
@@ -10,9 +11,10 @@ from telegram.ext import Updater, CallbackContext, CommandHandler, CallbackQuery
 def getKeyboard(mode: str):
     if mode == "start":
         keyboard = [
-            [InlineKeyboardButton("Register", callback_data="1_register")]
+            [InlineKeyboardButton("Register", callback_data="1_register")],
+            [InlineKeyboardButton("Delete my data", callback_data="1_delete")]
         ]
-        text = "Register to receive updates when vaccination slots are available. Click the following button:"
+        text = "Register to receive updates when vaccination slots are available. Choose an option:"
         return text, InlineKeyboardMarkup(keyboard)
     elif mode == "existing_user":
         keyboard = [
@@ -50,6 +52,8 @@ def start(update: Update, context: CallbackContext):
         context.user_data["first_time"] = True
     context.user_data.pop("state", None)
     context.user_data.pop("data_mode", None)
+    context.user_data.pop("pincode", None)
+    context.user_data.pop("district", None)
     context.user_data["back_status"] = "start"
     text, keyboard = getKeyboard("start")
     update.message.reply_text(text, reply_markup=keyboard)
@@ -66,6 +70,19 @@ def button(update: Update, context: CallbackContext):
         else:
             text, keyboard = getKeyboard("mode_select")
         query.edit_message_text(text, reply_markup=keyboard)
+    elif query.data == "1_delete":
+        context.user_data["back_status"] = "start"
+        context.user_data.pop("state", None)
+        context.user_data.pop("data_mode", None)
+        context.user_data.pop("pincode", None)
+        context.user_data.pop("district", None)
+        if checkUser(id):
+            deleteUser(id)
+            query.edit_message_text(
+                "Data successfully deleted. If you want to register again, send /start.")
+        else:
+            query.edit_message_text(
+                "No data found. If you want to register, send /start.")
     elif query.data == "2_modify":
         text, keyboard = getKeyboard("mode_select")
         query.edit_message_text(text, reply_markup=keyboard)
@@ -74,7 +91,7 @@ def button(update: Update, context: CallbackContext):
             "👌You will receive a message whenever slots are available.")
     elif query.data == "3_pin":
         context.user_data["back_status"] = "mode_select"
-        context.user_data["data_mode"] = "pin"
+        context.user_data["data_mode"] = "pincode"
         query.edit_message_text(
             "Ok. Send me the pincode of your region. Else send /back to go back.")
     elif query.data == "3_district":
@@ -101,27 +118,23 @@ def button(update: Update, context: CallbackContext):
                     "Ok. Send me the name of your district again. Else send /back to go back.")
             else:
                 text = "Selected district: *"+district + \
-                    "*\n\nSuccess. You wil now receive instant messages once vaccination slots become available."
-                context.user_data.pop("data_mode", None)
-                context.user_data.pop("back_status", None)
-                state = context.user_data["state"]
-                context.user_data.pop("state", None)
-                params = {
-                    "state": state,
-                    "district": district
-                }
-                addUser(id, "district", params)
+                    "*\n\nNow tell me you age. Else send /back to go back."
+                context.user_data["data_mode"] = "age"
+                context.user_data["district"] = district
                 query.edit_message_text(text, parse_mode="markdown")
 
 
 def back(update: Update, context: CallbackContext):
     if "back_status" not in context.user_data:
-        update.message.reply_text("Didn't get ya. Please /start over again.")
+        update.message.reply_text(
+            "Can't go back. Send /start to start over again.")
     else:
         text, keyboard = getKeyboard(context.user_data["back_status"])
         context.user_data["back_status"] = "start"
-        context.user_data.pop("data_mode", None)
         context.user_data.pop("state", None)
+        context.user_data.pop("data_mode", None)
+        context.user_data.pop("pincode", None)
+        context.user_data.pop("district", None)
         update.message.reply_text(text, reply_markup=keyboard)
 
 
@@ -130,7 +143,7 @@ def message(update: Update, context: CallbackContext):
     if "data_mode" not in context.user_data:
         update.message.reply_text("Didn't get ya. Please /start over again.")
     else:
-        if context.user_data["data_mode"] == "pin":
+        if context.user_data["data_mode"] == "pincode":
             try:
                 pincode = int(update.message.text)
             except:
@@ -141,14 +154,10 @@ def message(update: Update, context: CallbackContext):
                     update.message.reply_text(
                         "Invalid pincode. Please enter again.")
                 else:
-                    params = {
-                        "pincode": pincode
-                    }
-                    addUser(id, "pincode", params)
-                    context.user_data.pop("data_mode", None)
-                    context.user_data.pop("back_status", None)
+                    context.user_data["data_mode"] = "age"
+                    context.user_data["pincode"] = pincode
                     update.message.reply_text(
-                        "Success. You wil now receive instant messages once vaccination slots become available.")
+                        "Ok. Now tell me your age. Else send /back to go back.")
         elif context.user_data["data_mode"] == "state":
             state = getStateName(update.message.text)
             if state is None:
@@ -165,29 +174,65 @@ def message(update: Update, context: CallbackContext):
                 update.message.reply_text(text, parse_mode="markdown")
         elif context.user_data["data_mode"] == "district":
             if "state" not in context.user_data:
+                logger.critical("state not in user_date")
                 update.message.reply_text(
                     "Sorry, some error occured. Please /start over again.")
-            district = getDistrictName(
-                update.message.text, context.user_data["state"])
-            if district is None:
+            else:
+                district = getDistrictName(
+                    update.message.text, context.user_data["state"])
+                if district is None:
+                    update.message.reply_text(
+                        "*\"{}\"* not matching with name of any district. Please enter again.".format(update.message.text), parse_mode="markdown")
+                elif isinstance(district, list):
+                    text, keyboard = getDynamicKeyboard("district", district)
+                    update.message.reply_text(text, reply_markup=keyboard)
+                elif isinstance(district, str):
+                    text = "Selected district: *"+district + \
+                        "*\n\nNow tell me your age. Else send /back to go back."
+                    context.user_data["data_mode"] = "age"
+                    context.user_data["district"] = district
+                    update.message.reply_text(text, parse_mode="markdown")
+        elif context.user_data["data_mode"] == "age":
+            try:
+                age = int(update.message.text)
+            except:
                 update.message.reply_text(
-                    "*\"{}\"* not matching with name of any district. Please enter again.".format(update.message.text), parse_mode="markdown")
-            elif isinstance(district, list):
-                text, keyboard = getDynamicKeyboard("district", district)
-                update.message.reply_text(text, reply_markup=keyboard)
-            elif isinstance(district, str):
-                text = "Selected district: *"+district + \
-                    "*\n\nSuccess. You wil now receive instant messages once vaccination slots become available."
-                context.user_data.pop("data_mode", None)
+                    "Invalid age. Please enter again.")
+            else:
+                if age < 18:
+                    update.message.reply_text(
+                        "Sorry, currently vaccination is available only for *18+*. Send /start to register.", parse_mode="markdown")
+                else:
+                    if "pincode" in context.user_data:
+                        data = {
+                            "mode": "pincode",
+                            "call_mode": False,
+                            "name": update.effective_user.full_name,
+                            "age": age,
+                            "pincode": context.user_data["pincode"]
+                        }
+                        addUser(id, data)
+                    elif "state" in context.user_data and "district" in context.user_data:
+                        data = {
+                            "mode": "district",
+                            "call_mode": False,
+                            "name": update.effective_user.full_name,
+                            "age": age,
+                            "district": context.user_data["district"],
+                            "state": context.user_data["state"],
+                            "state_id": getStateCode(context.user_data["state"]),
+                            "district_id": getDistrictCode(context.user_data["state"], context.user_data["district"])
+                        }
+                        addUser(id, data)
+                    else:
+                        logger.critical("neither pincode not district")
+                    update.message.reply_text(
+                        "*Successfully registered*. Send /call if you want to receive call when slots are available.", parse_mode="markdown")
                 context.user_data.pop("back_status", None)
-                state = context.user_data["state"]
                 context.user_data.pop("state", None)
-                params = {
-                    "state": state,
-                    "district": district
-                }
-                addUser(id, "district", params)
-                update.message.reply_text(text, parse_mode="markdown")
+                context.user_data.pop("data_mode", None)
+                context.user_data.pop("pincode", None)
+                context.user_data.pop("district", None)
 
 
 if __name__ == "__main__":
@@ -204,4 +249,4 @@ if __name__ == "__main__":
     updater.idle()
 
 
-# TODO add ask phone and ask age and delete entry
+# TODO add ask phone
