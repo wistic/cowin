@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     while True:
         try:
-            search()
+            search(bot)
         except KeyboardInterrupt:
             break
 
