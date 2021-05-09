@@ -1,7 +1,7 @@
 import json
 from logger import logger
 from cowin import getStates, getDistricts
-from threading import Lock
+import threading
 import re
 import copy
 
@@ -25,7 +25,7 @@ search_data = {
     "district": {}
 }
 
-lock = Lock()
+lock = threading.RLock()
 
 
 def getStateName(pattern: str):
@@ -71,17 +71,17 @@ def checkUser(id: str):
 
 
 def getUser(id: str):
-    if checkUser(id):
-        with lock:
+    with lock:
+        if checkUser(id):
             return copy.deepcopy(users[id])
-    else:
-        logger.critical("User not found.")
+        else:
+            logger.critical("User not found.")
 
 
 def addUser(id: str, data: dict):
-    if checkUser(id):
-        deleteUser(id)
     with lock:
+        if checkUser(id):
+            deleteUser(id)
         users[id] = data
         if data["mode"] == "pincode":
             if data["pincode"] not in search_data["pincode"]:
@@ -96,14 +96,18 @@ def addUser(id: str, data: dict):
 
 
 def deleteUser(id: str):
-    if checkUser(id):
-        with lock:
+    with lock:
+        if checkUser(id):
             try:
                 if users[id]["mode"] == "pincode":
                     search_data["pincode"][users[id]["pincode"]].remove(id)
+                    if len(search_data["pincode"][users[id]["pincode"]]) == 0:
+                        search_data["pincode"].pop(users[id]["pincode"])
                 elif users[id]["mode"] == "district":
                     search_data["district"][users[id]
                                             ["district_id"]].remove(id)
+                    if len(search_data["district"][users[id]["district_id"]]) == 0:
+                        search_data["district"].pop(users[id]["district_id"])
             except:
                 logger.critical("Entry not found in search_data")
             users.pop(id, None)
@@ -115,15 +119,15 @@ def getSearch():
 
 
 def addPhone(id: str, phone: str):
-    if checkUser(id):
-        with lock:
+    with lock:
+        if checkUser(id):
             users[id]["phone"] = phone
             users[id]["call_mode"] = True
 
 
 def changeCallMode(id: str, mode: bool):
-    if checkUser(id):
-        with lock:
+    with lock:
+        if checkUser(id):
             users[id]["call_mode"] = mode
 
 

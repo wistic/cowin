@@ -1,4 +1,5 @@
-from bot import sendMessage, start_bot
+from bot import start_bot
+from search import search
 from logger import logger
 
 if __name__ == "__main__":
@@ -7,4 +8,5 @@ if __name__ == "__main__":
     logger.info("started polling")
     updater.start_polling()
     bot = updater.bot
-    updater.idle()
+    while True:
+        search()
