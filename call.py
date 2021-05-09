@@ -11,7 +11,7 @@ twilio_phone = os.environ['TWILIO_PHONE']
 
 def callUsers(call_directory: dict):
     client = Client(account_sid, auth_token)
-    logger.info("started calling")
+    logger.debug("started calling")
 
     for pin in call_directory["pincode"]:
         for age in call_directory["pincode"][pin].values():
@@ -66,66 +66,4 @@ def callUsers(call_directory: dict):
 
                 changeCallMode(id, False)
 
-    logger.info("finished calling")
-
-
-"""
-
-call_directory = {
-    "pincode" :{
-        pin1 :{
-            18: {
-                slots: 123
-                centers: 123
-                users: [
-                    {
-                        id: id
-                        name: name,
-                        phone: phone
-                    }
-                ]
-            },
-            45: {
-                slots: 123
-                centers: 123
-                users: [
-                    {
-                        id: id
-                        name: name,
-                        phone: phone
-                    }
-                ]
-            }
-        }
-    }
-    district: {
-        district_id: {
-            18: {
-                slots: 123
-                district_name: name
-                centers: 123
-                users: [
-                    {
-                        id: id
-                        name: name,
-                        phone: phone
-                    }
-                ]
-            },
-            45: {
-                slots: 123
-                district_name: name
-                centers: 123
-                users: [
-                    {
-                        id: id
-                        name: name,
-                        phone: phone
-                    }
-                ]
-            }
-        }
-    }
-}
-
-"""
+    logger.debug("finished calling")

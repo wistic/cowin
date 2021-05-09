@@ -129,33 +129,3 @@ def changeCallMode(id: str, mode: bool):
     with lock:
         if checkUser(id):
             users[id]["call_mode"] = mode
-
-
-"""
-users = {
-    "id": {
-        "mode": pincode/district,
-        "call_mode": True,
-        "name": name,
-        "phone": phone,
-        "age": age
-        params: variable type
-    }
-}
-
-
-states = {
-    "state_name": {
-        "state_id": id,
-        "districts": {
-            "district_name": "district_id"
-        }
-    }
-}
-
-search = {
-    "pin": [userids searching with pin]
-    "district": [userids searching with district]
-}
-
-"""

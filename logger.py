@@ -18,7 +18,7 @@ def get_log_level(num):
 
 # Set up a specific logger with our desired output level
 logger = logging.getLogger('Vaccine_Bot')
-logger.setLevel(get_log_level(0))
+logger.setLevel(get_log_level(1))
 
 formatter = logging.Formatter(
     "%(asctime)s %(levelname)s: %(message)s", "%Y-%m-%d %H:%M:%S")

@@ -39,7 +39,8 @@ def getKeyboard(mode: str):
             [KeyboardButton("Cancel")]
         ]
         text = "If you turn call mode on, you will receieve a call when vaccination slots are available." + \
-            " For that you need to share your phone number with me. Click below to send phone number:"
+            " For that you need to share your phone number with me. Click below to send phone number." + \
+            "\n\nNote: Call mode is turned off after every call you receive. You need to manually turn it on."
         return text, ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
 
