@@ -33,37 +33,19 @@ def getDistricts(states: dict):
     return states
 
 
-def findbyPin(pin: int):
-    url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByPin"
-    payload = {
-        "pincode": pin,
-        "date": datetime.datetime.today().strftime("%d-%m-%Y")
-    }
-    return makeRequest(url, payload)
-
-
-def calenderbyPin(pin: int):
+def calenderbyPin(pin: int, delta: int):
     url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByPin"
     payload = {
         "pincode": pin,
-        "date": datetime.datetime.today().strftime("%d-%m-%Y")
+        "date": (datetime.datetime.today()+datetime.timedelta(days=delta)).strftime("%d-%m-%Y")
     }
     return makeRequest(url, payload)
 
 
-def findbyDistrict(district_id: int):
-    url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/findByDistrict"
-    payload = {
-        "district_id": district_id,
-        "date": datetime.datetime.today().strftime("%d-%m-%Y")
-    }
-    return makeRequest(url, payload)
-
-
-def calendarbyDistrict(district_id: int):
+def calendarbyDistrict(district_id: int, delta: int):
     url = "https://cdn-api.co-vin.in/api/v2/appointment/sessions/public/calendarByDistrict"
     payload = {
         "district_id": district_id,
-        "date": datetime.datetime.today().strftime("%d-%m-%Y")
+        "date": (datetime.datetime.today()+datetime.timedelta(days=delta)).strftime("%d-%m-%Y")
     }
     return makeRequest(url, payload)

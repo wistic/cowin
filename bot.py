@@ -1,11 +1,10 @@
 import os
 
 from logger import logger
-from telegram.ext.messagehandler import MessageHandler
 from database import addPhone, changeCallMode, checkUser, deleteUser, getDistrictCode, getDistrictName, getStateCode, getStateName, addUser, getUser
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
-from telegram.ext import Updater, CallbackContext, CommandHandler, CallbackQueryHandler, Filters
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, Bot
+from telegram.ext import Updater, CallbackContext, CommandHandler, CallbackQueryHandler, Filters, MessageHandler
 
 
 def getKeyboard(mode: str):
@@ -256,7 +255,7 @@ def message(update: Update, context: CallbackContext):
                 context.user_data.pop("district", None)
 
 
-def contact(update: Update, context: CallbackContext):
+def contact(update: Update, _: CallbackContext):
     contact = update.effective_message.contact
     phone = contact.phone_number
     id = str(update.effective_chat.id)
@@ -320,7 +319,12 @@ def help(update: Update, context: CallbackContext):
     update.message.reply_text(text, parse_mode="markdown")
 
 
-if __name__ == "__main__":
+def sendMessage(bot: Bot, chat_id: str, message: str):
+    bot.send_message(
+        chat_id=chat_id, text=message, parse_mode="markdown")
+
+
+def start_bot():
     updater = Updater(os.environ["COWISTICBOT"], use_context=True)
     dispatcher = updater.dispatcher
 
@@ -333,5 +337,4 @@ if __name__ == "__main__":
     dispatcher.add_handler(CommandHandler('help', help))
     dispatcher.add_handler(MessageHandler(Filters.contact, contact))
 
-    updater.start_polling()
-    updater.idle()
+    return updater
