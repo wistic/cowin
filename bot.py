@@ -324,7 +324,7 @@ def sendMessage(bot: Bot, chat_id: str, message: str):
         chat_id=chat_id, text=message, parse_mode="markdown")
 
 
-def start_bot():
+def create_bot():
     updater = Updater(os.environ["COWISTICBOT"], use_context=True)
     dispatcher = updater.dispatcher
 
